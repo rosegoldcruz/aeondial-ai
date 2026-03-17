@@ -10,18 +10,18 @@ export async function transcribeAudio(
   audioBuffer: Buffer,
   scope: AgentScope,
 ): Promise<string> {
-  const providers = await resolveProviders(scope);
+  const providerStack = await resolveProviders(scope);
   logger.info(
     {
       org_id: scope.org_id,
       campaign_id: scope.campaign_id,
       agent_id: scope.agent_id,
-      provider_stack: providers,
+      provider_stack: providerStack,
     },
     'Selecting STT provider',
   );
 
-  switch (providers.stt_provider) {
+  switch (providerStack.stt_provider) {
     case 'openai': {
       if (!config.openaiApiKey) {
         throw new Error('OPENAI_API_KEY missing');
@@ -43,8 +43,9 @@ export async function transcribeAudio(
         throw new Error('DEEPGRAM_API_KEY missing');
       }
 
+      const modelId = providerStack.model_id || 'nova-2';
       const response = await axios.post(
-        'https://api.deepgram.com/v1/listen?model=nova-2',
+        `https://api.deepgram.com/v1/listen?model=${encodeURIComponent(modelId)}`,
         audioBuffer,
         {
           headers: {
@@ -61,7 +62,7 @@ export async function transcribeAudio(
     }
 
     default: {
-      logger.warn({ provider: providers.stt_provider }, 'Unknown STT provider');
+      logger.warn({ provider: providerStack.stt_provider }, 'Unknown STT provider');
       return '';
     }
   }

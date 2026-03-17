@@ -10,23 +10,23 @@ export async function generateReply(
   prompt: string,
   scope: AgentScope,
 ): Promise<string> {
-  const providers = await resolveProviders(scope);
+  const providerStack = await resolveProviders(scope);
   logger.info(
     {
       org_id: scope.org_id,
       campaign_id: scope.campaign_id,
       agent_id: scope.agent_id,
-      provider_stack: providers,
+      provider_stack: providerStack,
     },
     'Selecting LLM provider',
   );
 
-  switch (providers.llm_provider) {
+  switch (providerStack.llm_provider) {
     case 'openai': {
       if (!config.openaiApiKey) throw new Error('OPENAI_API_KEY missing');
 
       const completion = await openai.chat.completions.create({
-        model: providers.model_id || 'gpt-4.1-mini',
+        model: providerStack.model_id,
         messages: [{ role: 'user', content: prompt }],
       });
 
@@ -39,7 +39,7 @@ export async function generateReply(
       const res = await axios.post(
         process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/v1/chat/completions',
         {
-          model: providers.model_id || 'deepseek-chat',
+          model: providerStack.model_id,
           messages: [{ role: 'user', content: prompt }],
         },
         {
@@ -59,7 +59,7 @@ export async function generateReply(
           org_id: scope.org_id,
           campaign_id: scope.campaign_id,
           agent_id: scope.agent_id,
-          provider_stack: providers,
+          provider_stack: providerStack,
         },
         'Anthropic provider selected, using temporary stub response',
       );
@@ -68,7 +68,7 @@ export async function generateReply(
 
     default: {
       logger.warn(
-        { provider: providers.llm_provider },
+        { provider: providerStack.llm_provider },
         'Unknown LLM provider, returning empty string',
       );
       return '';

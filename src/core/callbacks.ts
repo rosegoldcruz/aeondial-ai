@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger';
-import { AgentScope } from './providers';
+import { AgentScope, createBackendHeaders } from './providers';
 
 type AiEventType =
   | 'transcript'
@@ -9,11 +9,16 @@ type AiEventType =
   | 'transfer'
   | 'error';
 
-const BACKEND_URL = process.env.AEONDIAL_BACKEND_URL || 'http://localhost:4000';
-const RETRIES = 3;
+const BACKEND_URL =
+  (process.env.BACKEND_URL || process.env.AEONDIAL_BACKEND_URL || 'http://localhost:4000').replace(/\/$/, '');
+const MAX_ATTEMPTS = 3;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status >= 500;
 }
 
 export async function postAiEvent(
@@ -23,27 +28,32 @@ export async function postAiEvent(
 ): Promise<void> {
   const url = `${BACKEND_URL}/ai/events`;
 
-  for (let attempt = 0; attempt <= RETRIES; attempt += 1) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     try {
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: createBackendHeaders(scope, scope.agent_id),
         body: JSON.stringify({
           type,
           org_id: scope.org_id,
           campaign_id: scope.campaign_id,
           agent_id: scope.agent_id,
+          call_id: scope.call_id,
           payload,
         }),
       });
 
       if (!res.ok) {
+        if (isRetryableStatus(res.status) && attempt < MAX_ATTEMPTS - 1) {
+          throw new Error(`Event callback failed with status ${res.status}`);
+        }
+
         throw new Error(`Event callback failed with status ${res.status}`);
       }
 
       return;
     } catch (error) {
-      if (attempt === RETRIES) {
+      if (attempt === MAX_ATTEMPTS - 1) {
         logger.warn(
           {
             error,
@@ -51,6 +61,7 @@ export async function postAiEvent(
             org_id: scope.org_id,
             campaign_id: scope.campaign_id,
             agent_id: scope.agent_id,
+            call_id: scope.call_id,
           },
           'Failed posting AI event after retries',
         );

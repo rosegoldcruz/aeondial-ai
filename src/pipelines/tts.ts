@@ -6,20 +6,23 @@ import { logger } from '../utils/logger';
 const eleven = new ElevenLabsClient({ apiKey: config.elevenLabsApiKey });
 
 export async function synthesizeSpeech(text: string, scope: AgentScope) {
-  const providers = await resolveProviders(scope);
+  const providerStack = await resolveProviders(scope);
 
   logger.info(
     {
       org_id: scope.org_id,
       campaign_id: scope.campaign_id,
       agent_id: scope.agent_id,
-      provider_stack: providers,
+      provider_stack: providerStack,
     },
     'Selecting TTS provider',
   );
 
-  if (providers.tts_provider !== 'elevenlabs') {
-    throw new Error(`Unsupported TTS provider: ${providers.tts_provider}`);
+  switch (providerStack.tts_provider) {
+    case 'elevenlabs':
+      break;
+    default:
+      throw new Error(`Unsupported TTS provider: ${providerStack.tts_provider}`);
   }
 
   if (!config.elevenLabsApiKey) {
@@ -27,10 +30,10 @@ export async function synthesizeSpeech(text: string, scope: AgentScope) {
   }
 
   const audio = await eleven.textToSpeech.convert(
-    providers.voice_id,
+    providerStack.voice_id,
     {
       text,
-      model_id: providers.model_id || 'eleven_monolingual_v1',
+      model_id: providerStack.model_id,
     },
   );
 

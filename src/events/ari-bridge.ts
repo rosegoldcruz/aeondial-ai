@@ -10,9 +10,10 @@ export async function handleAriEvent(event: any) {
   logger.info({ event }, 'Received ARI event (stub)');
 
   const scope: AgentScope = {
-    org_id: event.org_id || event.tenantId || 'default-tenant',
-    campaign_id: event.campaign_id || event.campaignId || 'default-campaign',
+    org_id: event.org_id || 'default-tenant',
+    campaign_id: event.campaign_id || 'default-campaign',
     agent_id: `AI-${createId()}`,
+    call_id: event.callId,
   };
 
   if (event.direction === 'inbound') {

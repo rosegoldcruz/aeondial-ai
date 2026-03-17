@@ -8,13 +8,31 @@ export async function handleTurn(
   userText: string,
   scope: AgentScope,
 ): Promise<Buffer | null> {
-  logger.info({ userText, scope }, 'Agent handling turn');
+  logger.info(
+    {
+      org_id: scope.org_id,
+      campaign_id: scope.campaign_id,
+      agent_id: scope.agent_id,
+      call_id: scope.call_id,
+      userText,
+    },
+    'Agent handling turn',
+  );
 
   await postAiEvent('transcript', scope, { role: 'user', text: userText });
 
   try {
     const reply = await generateReply(userText, scope);
-    logger.info({ reply }, 'Agent LLM reply');
+    logger.info(
+      {
+        org_id: scope.org_id,
+        campaign_id: scope.campaign_id,
+        agent_id: scope.agent_id,
+        call_id: scope.call_id,
+        reply,
+      },
+      'Agent LLM reply',
+    );
 
     await postAiEvent('transcript', scope, { role: 'assistant', text: reply });
     await postAiEvent('summary', scope, { summary: reply.slice(0, 200) });
