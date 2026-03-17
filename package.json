@@ -10,6 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@paralleldrive/cuid2": "^2.2.2",
     "@livekit/protocol": "^1.45.0",
     "@livekit/rtc-node": "^0.13.24",
     "axios": "^1.13.6",
